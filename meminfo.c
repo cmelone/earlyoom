@@ -60,6 +60,28 @@ static long long available_guesstimate(const char* buf)
     return MemFree + Cached + Buffers - Shmem;
 }
 
+
+/*
+
+*/
+static long long get_cgroup_memory_limit() {
+    FILE *file = fopen("/sys/fs/cgroup/memory/memory.limit_in_bytes", "r");
+    if (!file) {
+        perror("fopen");
+        return -1;
+    }
+
+    long long limit;
+    if (fscanf(file, "%lld", &limit) != 1) {
+        perror("fscanf");
+        fclose(file);
+        return -1;
+    }
+
+    fclose(file);
+    return limit / 1024; // Convert bytes to KiB
+}
+
 /* Parse /proc/meminfo.
  * This function either returns valid data or kills the process
  * with a fatal error.
@@ -93,7 +115,11 @@ meminfo_t parse_meminfo()
         fatal(103, "could not read /proc/meminfo: 0 bytes returned\n");
     }
 
-    m.MemTotalKiB = get_entry_fatal("MemTotal:", buf);
+    // m.MemTotalKiB = get_entry_fatal("MemTotal:", buf);
+    m.MemTotalKiB = get_cgroup_memory_limit();
+    if (m.MemTotalKiB < 0) {
+        fatal(104, "could not read cgroup memory limit\n");
+    }
     m.SwapTotalKiB = get_entry_fatal("SwapTotal:", buf);
     m.AnonPagesKiB = get_entry_fatal("AnonPages:", buf);
     m.SwapFreeKiB = get_entry_fatal("SwapFree:", buf);
