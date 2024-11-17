@@ -172,7 +172,7 @@ meminfo_t parse_meminfo()
 
     // Calculated values
     // m.UserMemTotalKiB = m.MemAvailableKiB + m.AnonPagesKiB;
-    m.UserMemTotalKiB = MemTotalKiB;
+    m.UserMemTotalKiB = m.MemTotalKiB;
     m.MemAvailableKiB = get_available_memory();
 
     // Calculate percentages
