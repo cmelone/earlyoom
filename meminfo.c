@@ -122,12 +122,6 @@ static long long get_usage() {
     memory_stat_t stats = parse_mem_stat();
     long long working_set = usage - stats.total_inactive_file;
 
-    // debug print
-    debug("usage: %lld\n", usage);
-    debug("total_rss: %lld\n", stats.total_rss);
-    debug("total_inactive_file: %lld\n", stats.total_inactive_file);
-    debug("working_set: %lld\n", working_set);
-
     // return bigger of working set and stats.total_rss
     if (working_set > stats.total_rss) {
         return working_set;
@@ -189,9 +183,9 @@ meminfo_t parse_meminfo()
     // Calculated values
     m.UserMemTotalKiB = m.MemAvailableKiB + m.AnonPagesKiB;
 
-    debug("anon pages: %lld\n", m.AnonPagesKiB);
-    debug("mem total: %lld\n", m.MemTotalKiB);
-    debug("usage: %lld\n", usage);
+    debug("anon pages: %lld\n", m.AnonPagesKiB / 1024);
+    debug("mem total: %lld\n", m.MemTotalKiB / 1024);
+    debug("mem usage: %lld\n", usage / 1024);
 
 
     // Calculate percentages
