@@ -60,8 +60,9 @@ static long long available_guesstimate(const char* buf)
     return MemFree + Cached + Buffers - Shmem;
 }
 
-memory_stat_t parse_memory_stat(const char *path) {
-    FILE *file = fopen(path, "r");
+/* get total_rss and total_inactive_file from /sys/fs/cgroup/memory/memory.stat */
+static memory_stat_t parse_mem_stat() {
+    FILE *file = fopen("/sys/fs/cgroup/memory/memory.stat", "r");
     if (!file) {
         perror("fopen");
         exit(EXIT_FAILURE);
@@ -71,6 +72,9 @@ memory_stat_t parse_memory_stat(const char *path) {
     char line[256];
 
     while (fgets(line, sizeof(line), file)) {
+        // 9 is the length of total_rss plus a space
+        // get the value after the space
+        // convert to KiB from bytes
         if (strncmp(line, "total_rss", 9) == 0) {
             sscanf(line, "total_rss %lld", &stats.total_rss);
         } else if (strncmp(line, "total_inactive_file", 19) == 0) {
@@ -78,50 +82,57 @@ memory_stat_t parse_memory_stat(const char *path) {
         }
     }
 
+    // convert to KiB from bytes
+    stats.total_rss /= 1024;
+    stats.total_inactive_file /= 1024;
+
     fclose(file);
     return stats;
 }
 
-/*
-
+/* given a path, return the value in the file
+ * assumes the file contains a single integer (butes)
 */
-long long get_cgroup_memory_info(const char *path) {
+static long long parse_cgroup_mem_info(const char *path) {
     FILE *file = fopen(path, "r");
     if (!file) {
         perror("fopen");
         return -1;
     }
 
-    long long limit;
-    if (fscanf(file, "%lld", &limit) != 1) {
+    long long number;
+    if (fscanf(file, "%lld", &number) != 1) {
         perror("fscanf");
         fclose(file);
         return -1;
     }
 
     fclose(file);
-    return limit / 1024; // Convert bytes to KiB
+    return number / 1024; // convert bytes to KiB
 }
 
-long long get_usage() {
-    long long usage = get_cgroup_memory_info("/sys/fs/cgroup/memory/memory.usage_in_bytes");
 
-    memory_stat_t stats = parse_memory_stat("/sys/fs/cgroup/memory/memory.stat");
+/* returns the memory usage of the cgroup in KiB
+ * because it will be used by the OOM killer, we return
+ * the max of (working set, total_rss)
+ * see https://stackoverflow.com/a/63081415
+*/
+static long long get_usage() {
+    long long usage = parse_cgroup_mem_info("/sys/fs/cgroup/memory/memory.usage_in_bytes");
+    memory_stat_t stats = parse_mem_stat();
+    long long working_set = usage - stats.total_inactive_file;
 
-    long long working_set = usage - stats.total_inactive_file / 1024;
-
-    debug("working_set: %lld\n", working_set);
-    debug("total_rss: %lld\n", stats.total_rss / 1024);
-    debug("total_inactive_file: %lld\n", stats.total_inactive_file / 1024);
+    // debug print
     debug("usage: %lld\n", usage);
+    debug("total_rss: %lld\n", stats.total_rss);
+    debug("total_inactive_file: %lld\n", stats.total_inactive_file);
+    debug("working_set: %lld\n", working_set);
 
-    // only return smaller if >0
-
-    // return bigger of working set and stats.total_rss not with ternary
-    if (working_set > stats.total_rss / 1024) {
+    // return bigger of working set and stats.total_rss
+    if (working_set > stats.total_rss) {
         return working_set;
     } else {
-        return stats.total_rss / 1024;
+        return stats.total_rss;
     }
 }
 
@@ -159,8 +170,7 @@ meminfo_t parse_meminfo()
         fatal(103, "could not read /proc/meminfo: 0 bytes returned\n");
     }
 
-    // m.MemTotalKiB = get_entry_fatal("MemTotal:", buf);
-    m.MemTotalKiB = get_cgroup_memory_info("/sys/fs/cgroup/memory/memory.limit_in_bytes");
+    m.MemTotalKiB = parse_cgroup_mem_info("/sys/fs/cgroup/memory/memory.limit_in_bytes");
     if (m.MemTotalKiB < 0) {
         fatal(104, "could not read cgroup memory limit\n");
     }
@@ -168,26 +178,20 @@ meminfo_t parse_meminfo()
     m.AnonPagesKiB = get_entry_fatal("AnonPages:", buf);
     m.SwapFreeKiB = get_entry_fatal("SwapFree:", buf);
 
+    // debug print
+    debug("swap total: %lld\n", m.SwapTotalKiB);
+    debug("anon pages: %lld\n", m.AnonPagesKiB);
+    debug("swap free: %lld\n", m.SwapFreeKiB);
+
     long long usage = get_usage();
     if (usage < 0) {
-        fatal(104, "could not read available memory\n");
+        fatal(104, "could not read used memory\n");
     }
 
     m.MemAvailableKiB = m.MemTotalKiB - usage;
 
-    // m.MemAvailableKiB = get_entry("MemAvailable:", buf);
-    // if (m.MemAvailableKiB < 0) {
-    //     m.MemAvailableKiB = available_guesstimate(buf);
-    //     if (guesstimate_warned == 0) {
-    //         fprintf(stderr, "Warning: Your kernel does not provide MemAvailable data (needs 3.14+)\n"
-    //                         "         Falling back to guesstimate\n");
-    //         guesstimate_warned = 1;
-    //     }
-    // }
-
     // Calculated values
-    // m.UserMemTotalKiB = m.MemAvailableKiB + m.AnonPagesKiB;
-    m.UserMemTotalKiB = m.MemTotalKiB;
+    m.UserMemTotalKiB = m.MemAvailableKiB + m.AnonPagesKiB;
 
     // Calculate percentages
     m.MemAvailablePercent = (double)m.MemAvailableKiB * 100 / (double)m.UserMemTotalKiB;
