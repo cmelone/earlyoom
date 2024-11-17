@@ -117,13 +117,13 @@ long long get_available_memory() {
 
     // only return smaller if >0
 
-    // return smaller of working set and stats.total_rss not with ternary
-    if (working_set < stats.total_rss / 1024) {
+    // return bigger of working set and stats.total_rss not with ternary
+    if (working_set > stats.total_rss / 1024) {
         return working_set;
     } else {
         return stats.total_rss / 1024;
     }
-}
+
 
 /* Parse /proc/meminfo.
  * This function either returns valid data or kills the process
