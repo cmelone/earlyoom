@@ -108,11 +108,11 @@ long long get_available_memory() {
 
     memory_stat_t stats = parse_memory_stat("/sys/fs/cgroup/memory/memory.stat");
 
-    long long working_set = usage - stats.total_inactive_file;
+    long long working_set = usage - stats.total_inactive_file / 1024;
 
     debug("working_set: %lld\n", working_set);
-    debug("total_rss: %lld\n", stats.total_rss);
-    debug("total_inactive_file: %lld\n", stats.total_inactive_file);
+    debug("total_rss: %lld\n", stats.total_rss / 1024);
+    debug("total_inactive_file: %lld\n", stats.total_inactive_file / 1024);
     debug("usage: %lld\n", usage);
 
     return 10000000000;
