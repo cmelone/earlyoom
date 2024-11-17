@@ -123,6 +123,7 @@ long long get_available_memory() {
     } else {
         return stats.total_rss / 1024;
     }
+}
 
 
 /* Parse /proc/meminfo.
