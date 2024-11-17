@@ -103,7 +103,7 @@ long long get_cgroup_memory_info(const char *path) {
     return limit / 1024; // Convert bytes to KiB
 }
 
-long long get_available_memory() {
+long long get_usage() {
     long long usage = get_cgroup_memory_info("/sys/fs/cgroup/memory/memory.usage_in_bytes");
 
     memory_stat_t stats = parse_memory_stat("/sys/fs/cgroup/memory/memory.stat");
@@ -168,10 +168,12 @@ meminfo_t parse_meminfo()
     m.AnonPagesKiB = get_entry_fatal("AnonPages:", buf);
     m.SwapFreeKiB = get_entry_fatal("SwapFree:", buf);
 
-    m.MemAvailableKiB = get_available_memory();
-    if (m.MemAvailableKiB < 0) {
+    long long usage = get_usage();
+    if (usage < 0) {
         fatal(104, "could not read available memory\n");
     }
+
+    m.MemAvailableKiB = m.MemTotalKiB - usage;
 
     // m.MemAvailableKiB = get_entry("MemAvailable:", buf);
     // if (m.MemAvailableKiB < 0) {
