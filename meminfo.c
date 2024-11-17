@@ -190,6 +190,7 @@ meminfo_t parse_meminfo()
 
     // Calculate percentages
     m.MemAvailablePercent = (double)m.MemAvailableKiB * 100 / (double)m.UserMemTotalKiB;
+    debug("mem availL %lld\n", m.MemAvailablePercent);
     if (m.SwapTotalKiB > 0) {
         m.SwapFreePercent = (double)m.SwapFreeKiB * 100 / (double)m.SwapTotalKiB;
     } else {
