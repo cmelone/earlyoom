@@ -115,15 +115,13 @@ long long get_available_memory() {
     debug("total_inactive_file: %lld\n", stats.total_inactive_file / 1024);
     debug("usage: %lld\n", usage);
 
-    return 10000000000;
-
     // only return smaller if >0
 
     // return smaller of working set and stats.total_rss not with ternary
-    if (working_set < stats.total_rss) {
+    if (working_set < stats.total_rss / 1024) {
         return working_set;
     } else {
-        return stats.total_rss;
+        return stats.total_rss / 1024;
     }
 }
 
