@@ -304,7 +304,7 @@ void print_mem_stats(int __attribute__((format(printf, 1, 2))) (*out_func)(const
 {
     out_func("mem avail: %5lld of %5lld MiB (" PRIPCT "), swap free: %4lld of %4lld MiB (" PRIPCT ")\n",
         m.MemAvailableKiB / 1024,
-        m.UserMemTotalKiB / 1024,
+        m.MemTotalKiB / 1024,
         m.MemAvailablePercent,
         m.SwapFreeKiB / 1024,
         m.SwapTotalKiB / 1024,
