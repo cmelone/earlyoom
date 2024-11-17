@@ -71,9 +71,9 @@ memory_stat_t parse_memory_stat(const char *path) {
     char line[256];
 
     while (fgets(line, sizeof(line), file)) {
-        if (strncmp(line, "total_rss", 10) == 0) {
+        if (strncmp(line, "total_rss", 9) == 0) {
             sscanf(line, "total_rss %lld", &stats.total_rss);
-        } else if (strncmp(line, "total_inactive_file", 17) == 0) {
+        } else if (strncmp(line, "total_inactive_file", 19) == 0) {
             sscanf(line, "total_inactive_file %lld", &stats.total_inactive_file);
         }
     }
