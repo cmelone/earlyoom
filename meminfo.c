@@ -60,12 +60,33 @@ static long long available_guesstimate(const char* buf)
     return MemFree + Cached + Buffers - Shmem;
 }
 
+memory_stat_t parse_memory_stat(const char *path) {
+    FILE *file = fopen(path, "r");
+    if (!file) {
+        perror("fopen");
+        exit(EXIT_FAILURE);
+    }
+
+    memory_stat_t stats = {0};
+    char line[256];
+
+    while (fgets(line, sizeof(line), file)) {
+        if (strncmp(line, "total_rss", 10) == 0) {
+            sscanf(line, "total_rss %lld", &stats.total_rss);
+        } else if (strncmp(line, "total_inactive_file", 17) == 0) {
+            sscanf(line, "total_inactive_file %lld", &stats.total_inactive_file);
+        }
+    }
+
+    fclose(file);
+    return stats;
+}
 
 /*
 
 */
-static long long get_cgroup_memory_limit() {
-    FILE *file = fopen("/sys/fs/cgroup/memory/memory.limit_in_bytes", "r");
+long long get_cgroup_memory_info(const char *path) {
+    FILE *file = fopen(path, "r");
     if (!file) {
         perror("fopen");
         return -1;
@@ -80,6 +101,21 @@ static long long get_cgroup_memory_limit() {
 
     fclose(file);
     return limit / 1024; // Convert bytes to KiB
+}
+
+long long get_available_memory() {
+    long long usage = get_cgroup_memory_info("/sys/fs/cgroup/memory/memory.usage_in_bytes");
+
+    memory_stat_t stats = parse_memory_stat("/sys/fs/cgroup/memory/memory.stat");
+
+    long long working_set = usage - stats.total_inactive_file;
+
+    // return smaller of working set and stats.total_rss not with ternary
+    if (working_set < stats.total_rss) {
+        return working_set;
+    } else {
+        return stats.total_rss;
+    }
 }
 
 /* Parse /proc/meminfo.
@@ -116,7 +152,7 @@ meminfo_t parse_meminfo()
     }
 
     // m.MemTotalKiB = get_entry_fatal("MemTotal:", buf);
-    m.MemTotalKiB = get_cgroup_memory_limit();
+    m.MemTotalKiB = get_cgroup_memory_info("/sys/fs/cgroup/memory/memory.limit_in_bytes");
     if (m.MemTotalKiB < 0) {
         fatal(104, "could not read cgroup memory limit\n");
     }
@@ -124,18 +160,20 @@ meminfo_t parse_meminfo()
     m.AnonPagesKiB = get_entry_fatal("AnonPages:", buf);
     m.SwapFreeKiB = get_entry_fatal("SwapFree:", buf);
 
-    m.MemAvailableKiB = get_entry("MemAvailable:", buf);
-    if (m.MemAvailableKiB < 0) {
-        m.MemAvailableKiB = available_guesstimate(buf);
-        if (guesstimate_warned == 0) {
-            fprintf(stderr, "Warning: Your kernel does not provide MemAvailable data (needs 3.14+)\n"
-                            "         Falling back to guesstimate\n");
-            guesstimate_warned = 1;
-        }
-    }
+    // m.MemAvailableKiB = get_entry("MemAvailable:", buf);
+    // if (m.MemAvailableKiB < 0) {
+    //     m.MemAvailableKiB = available_guesstimate(buf);
+    //     if (guesstimate_warned == 0) {
+    //         fprintf(stderr, "Warning: Your kernel does not provide MemAvailable data (needs 3.14+)\n"
+    //                         "         Falling back to guesstimate\n");
+    //         guesstimate_warned = 1;
+    //     }
+    // }
 
     // Calculated values
-    m.UserMemTotalKiB = m.MemAvailableKiB + m.AnonPagesKiB;
+    // m.UserMemTotalKiB = m.MemAvailableKiB + m.AnonPagesKiB;
+    m.UserMemTotalKiB = MemTotalKiB;
+    m.MemAvailableKiB = get_available_memory();
 
     // Calculate percentages
     m.MemAvailablePercent = (double)m.MemAvailableKiB * 100 / (double)m.UserMemTotalKiB;

@@ -34,6 +34,11 @@ typedef struct procinfo {
     char cmdline[PATH_LEN];
 } procinfo_t;
 
+typedef struct {
+    long long total_rss;
+    long long total_inactive_file;
+} memory_stat_t;
+
 // placeholder value for numeric fields
 #define PROCINFO_FIELD_NOT_SET -9999
 
