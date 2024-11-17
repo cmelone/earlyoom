@@ -184,14 +184,9 @@ meminfo_t parse_meminfo()
     // m.UserMemTotalKiB = m.MemAvailableKiB + m.AnonPagesKiB;
     m.UserMemTotalKiB = m.MemTotalKiB;
 
-    debug("anon pages: %lld\n", m.AnonPagesKiB / 1024);
-    debug("mem total: %lld\n", m.UserMemTotalKiB / 1024);
-    debug("mem usage: %lld\n", usage / 1024);
-
 
     // Calculate percentages
     m.MemAvailablePercent = (double)m.MemAvailableKiB * 100 / (double)m.UserMemTotalKiB;
-    debug("mem availL %lld\n", m.MemAvailablePercent);
     if (m.SwapTotalKiB > 0) {
         m.SwapFreePercent = (double)m.SwapFreeKiB * 100 / (double)m.SwapTotalKiB;
     } else {
