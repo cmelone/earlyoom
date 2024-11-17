@@ -160,6 +160,11 @@ meminfo_t parse_meminfo()
     m.AnonPagesKiB = get_entry_fatal("AnonPages:", buf);
     m.SwapFreeKiB = get_entry_fatal("SwapFree:", buf);
 
+    m.MemAvailableKiB = get_available_memory();
+    if (m.MemAvailableKiB < 0) {
+        fatal(104, "could not read available memory\n");
+    }
+
     // m.MemAvailableKiB = get_entry("MemAvailable:", buf);
     // if (m.MemAvailableKiB < 0) {
     //     m.MemAvailableKiB = available_guesstimate(buf);
@@ -173,7 +178,6 @@ meminfo_t parse_meminfo()
     // Calculated values
     // m.UserMemTotalKiB = m.MemAvailableKiB + m.AnonPagesKiB;
     m.UserMemTotalKiB = m.MemTotalKiB;
-    m.MemAvailableKiB = get_available_memory();
 
     // Calculate percentages
     m.MemAvailablePercent = (double)m.MemAvailableKiB * 100 / (double)m.UserMemTotalKiB;
