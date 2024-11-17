@@ -178,10 +178,6 @@ meminfo_t parse_meminfo()
     m.AnonPagesKiB = get_entry_fatal("AnonPages:", buf);
     m.SwapFreeKiB = get_entry_fatal("SwapFree:", buf);
 
-    // debug print
-    debug("swap total: %lld\n", m.SwapTotalKiB);
-    debug("anon pages: %lld\n", m.AnonPagesKiB);
-    debug("swap free: %lld\n", m.SwapFreeKiB);
 
     long long usage = get_usage();
     if (usage < 0) {
@@ -192,6 +188,11 @@ meminfo_t parse_meminfo()
 
     // Calculated values
     m.UserMemTotalKiB = m.MemAvailableKiB + m.AnonPagesKiB;
+
+    debug("anon pages: %lld\n", m.AnonPagesKiB);
+    debug("mem total: %lld\n", m.MemTotalKiB);
+    debug("usage: %lld\n", usage);
+
 
     // Calculate percentages
     m.MemAvailablePercent = (double)m.MemAvailableKiB * 100 / (double)m.UserMemTotalKiB;
