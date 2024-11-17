@@ -184,7 +184,7 @@ meminfo_t parse_meminfo()
     m.UserMemTotalKiB = m.MemAvailableKiB + m.AnonPagesKiB;
 
     debug("anon pages: %lld\n", m.AnonPagesKiB / 1024);
-    debug("mem total: %lld\n", m.MemTotalKiB / 1024);
+    debug("mem total: %lld\n", m.UserMemTotalKiB / 1024);
     debug("mem usage: %lld\n", usage / 1024);
 
 
