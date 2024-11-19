@@ -48,17 +48,6 @@ static long long get_entry_fatal(const char* name, const char* buf)
     return val;
 }
 
-/* If the kernel does not provide MemAvailable (introduced in Linux 3.14),
- * approximate it using other data we can get */
-static long long available_guesstimate(const char* buf)
-{
-    long long Cached = get_entry_fatal("Cached:", buf);
-    long long MemFree = get_entry_fatal("MemFree:", buf);
-    long long Buffers = get_entry_fatal("Buffers:", buf);
-    long long Shmem = get_entry_fatal("Shmem:", buf);
-
-    return MemFree + Cached + Buffers - Shmem;
-}
 
 /* get total_rss and total_inactive_file from /sys/fs/cgroup/memory/memory.stat */
 static memory_stat_t parse_mem_stat() {
@@ -140,7 +129,6 @@ meminfo_t parse_meminfo()
     // Note that we do not need to close static FDs that we ensure to
     // `fopen()` maximally once.
     static FILE* fd;
-    static int guesstimate_warned = 0;
     // On Linux 5.3, "wc -c /proc/meminfo" counts 1391 bytes.
     // 8192 should be enough for the foreseeable future.
     char buf[8192] = { 0 };
@@ -179,6 +167,8 @@ meminfo_t parse_meminfo()
     }
 
     m.MemAvailableKiB = m.MemTotalKiB - usage;
+    debug("Memtotal: %lld,", m.MemTotalKiB);
+    debug("MemAvailable: %lld,", m.MemAvailableKiB);
 
     // Calculated values
     // m.UserMemTotalKiB = m.MemAvailableKiB + m.AnonPagesKiB;
